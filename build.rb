@@ -10,29 +10,36 @@ if ARGV.length < 1
   exit 1
 end
 
-project_name = ARGV[0];
+project_name = ARGV[0]
+project_path = "#{project_name}"
+build_dir = "build/#{project_name}"
+output_exe = "#{build_dir}/#{project_name}"
 
-args = [
-  "-nostartfiles",
-  "-nostdlib",
-  "-nodefaultlibs",
-  "-fPIC"
-]
+# create build dir
+FileUtils.mkdir_p(build_dir)
 
-FileUtils.mkdir_p("build")
+# list all .S
+asm_files = Dir.glob("#{project_path}/*.S")
 
-files = Dir.glob("#{project_name}/*")
+# compile .S to .o
+obj_files = asm_files.map do |f|
+  obj = "#{build_dir}/" + File.basename(f, ".S") + ".o"
+  run("as #{f} -o #{obj}")
+  obj
+end
 
-out = "build/#{project_name}"
-run("gcc #{args.join(' ')} #{files.join(' ')} -o #{out}")
+# link
+run("ld #{obj_files.join(" ")} -o #{output_exe}")
 
+# copy to home
 home = ENV["HOME"]
 home_out = "#{home}/temp/gas/#{project_name}"
 
 FileUtils.mkdir_p(home_out)
-FileUtils.cp(out, home_out)
+FileUtils.cp(output_exe, home_out)
 
-Dir.chdir("#{home}/temp/gas/#{project_name}") do
+# run at home
+Dir.chdir(home_out) do
   run("chmod +x #{project_name}")
   run("./#{project_name}")
 end
